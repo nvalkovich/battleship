@@ -1,10 +1,16 @@
 import { ReqMessage } from './types/interfaces';
 import players from './storage/Players';
-import { wsRoomCommands } from './types/enums';
+import { wsRoomCommands, wsShipsCommands } from './types/enums';
 import { WebSocket } from 'ws';
 import rooms from './storage/Rooms';
 import { clients } from './app';
-import { createRegResponse, createUpdateRoomResponse, createNewGameResponse } from './responses';
+import {
+  createRegResponse,
+  createUpdateRoomResponse,
+  createNewGameResponse,
+  createStartGameResponse,
+} from './responses';
+import games from './storage/Game';
 
 const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
   switch (req.type) {
@@ -92,6 +98,30 @@ const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
       }
 
       break;
+    case wsShipsCommands.AddShips:
+      const { gameId, ships, indexPlayer } = JSON.parse(req.data.toString());
+
+      const player = { index: indexPlayer, ships };
+
+      if (!games.getGameById(gameId)) {
+        games.createNewGame({ gameId, turn: indexPlayer, players: [player] });
+      } else {
+        games.addPlayerToGame(gameId, player);
+      }
+
+      const game = games.getGameById(gameId);
+      if (game?.players?.length === 2) {
+        const allPlayers = game.players.map((player) => player.index);
+        const player = game.players.find((player) => player.index === game.turn);
+        if (!player) {
+          return;
+        }
+        const res = createStartGameResponse(player?.ships, player?.index);
+        for (let player of allPlayers) {
+          const wsClient = clients.get(player) as WebSocket;
+          wsClient.send(res);
+        }
+      }
   }
 };
 

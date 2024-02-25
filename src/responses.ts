@@ -1,4 +1,5 @@
 import rooms from './storage/Rooms';
+import { Ship } from './types/interfaces';
 
 export const createRegResponse = (name: string, error: string): string => {
   return JSON.stringify({
@@ -35,6 +36,17 @@ export const createNewGameResponse = (gameID: number, playerID: string): string 
     data: JSON.stringify({
       idGame: gameID,
       idPlayer: playerID,
+    }),
+    id: 0,
+  });
+};
+
+export const createStartGameResponse = (ships: Ship[], indexPlayer: string): string => {
+  return JSON.stringify({
+    type: 'start_game',
+    data: JSON.stringify({
+      ships,
+      indexPlayer,
     }),
     id: 0,
   });
