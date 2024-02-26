@@ -16,15 +16,18 @@ class WinnersStorage {
     return this.winners;
   }
 
-  addNewWinner(data: WinnerData) {
-    const existingWinner = this.getWinnerByName(data.name);
+  addNewWinner(winnerName: string) {
+    this.winners.push({ name: winnerName, wins: 1 });
+  }
 
-    if (existingWinner) {
-      existingWinner.wins += 1;
+  addWin(winnerName: string) {
+    const existingWinner = this.getWinnerByName(winnerName);
+
+    if (!existingWinner) {
       return;
     }
 
-    this.winners.push(data);
+    existingWinner.wins = existingWinner?.wins + 1;
   }
 
   getWinnerByName(name: string) {

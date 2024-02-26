@@ -26,6 +26,10 @@ class RoomsStorage {
     destRoom?.roomUsers.push(newUser);
   }
 
+  getRooms() {
+    return this.rooms;
+  }
+
   createRoom(room: RoomData) {
     this.rooms.push(room);
   }
@@ -78,6 +82,15 @@ class RoomsStorage {
   isUserInRoom(userID: string) {
     const allUsersInRoom = this.getPlayersInAllRooms();
     return allUsersInRoom.includes(userID);
+  }
+
+  deleteRoomByUsersIDs(user1: string, user2: string) {
+    this.rooms = this.rooms.filter(({ roomUsers }) => {
+      const roomUserIds = roomUsers.map((u) => u.index).sort();
+      const userIds = [user1, user2].sort();
+
+      return roomUserIds[0] !== userIds[0] || roomUserIds[1] !== userIds[1];
+    });
   }
 }
 

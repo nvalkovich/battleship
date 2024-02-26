@@ -36,14 +36,18 @@ class GamesStorage {
     return this.games.find((gameData) => gameData.gameId === id);
   }
 
-  setTurn(gameID: string, nextPlayerID: string) {
-    const game = this.getGameById(gameID);
+  setTurn(gameId: string, nextPlayerId: string) {
+    const game = this.getGameById(gameId);
 
     if (!game) {
       return;
     }
 
-    game.turn = nextPlayerID;
+    game.turn = nextPlayerId;
+  }
+
+  finishGame(finishGameId: string) {
+    this.games = this.games.filter((game) => game.gameId !== finishGameId);
   }
 }
 

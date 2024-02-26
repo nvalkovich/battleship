@@ -72,6 +72,10 @@ class Player {
 
     return AttackResults.Miss;
   }
+
+  public isAllShipsKilled(): boolean {
+    return this.ships.every((ship) => ship.isKilled);
+  }
 }
 
 export default Player;

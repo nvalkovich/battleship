@@ -12,6 +12,7 @@ import {
   createTurnResponse,
   createUpdateWinnersResponse,
   createAttackResponse,
+  createFinishGameResponse,
 } from './responseFactory';
 import games from '../storage/GamesStorage';
 import winners from '../storage/WinnersStorage';
@@ -137,12 +138,13 @@ const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
 
       const attackData = JSON.parse(data);
       const currentGame = games.getGameById(attackData.gameId);
+      const currentPlayerId = attackData.indexPlayer;
 
-      if (!currentGame || attackData.indexPlayer !== currentGame?.turn || !currentGame.players) {
+      if (!currentGame || currentPlayerId !== currentGame?.turn || !currentGame.players) {
         return;
       }
 
-      const attackedPlayer = currentGame.players.find((player) => player.index !== attackData.indexPlayer);
+      const attackedPlayer = currentGame.players.find((player) => player.index !== currentPlayerId);
 
       if (!attackedPlayer) {
         return;
@@ -158,8 +160,8 @@ const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
 
       const attackResult = attackedPlayer.attack(attackPosition.x, attackPosition.y);
 
-      const attackResponse = createAttackResponse(attackPosition, attackData.indexPlayer, attackResult);
-      const nextPlayer = attackResult === AttackResults.Miss ? attackedPlayer.index : attackData.indexPlayer;
+      const attackResponse = createAttackResponse(attackPosition, currentPlayerId, attackResult);
+      const nextPlayer = attackResult === AttackResults.Miss ? attackedPlayer.index : currentPlayerId;
 
       games.setTurn(currentGame.gameId, nextPlayer);
       const turnRes = createTurnResponse(nextPlayer);
@@ -167,7 +169,34 @@ const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
       for (let player of currentGame.players) {
         const wsClient = clients.get(player.index) as WebSocket;
         wsClient.send(attackResponse);
-        wsClient.send(turnRes);
+      }
+
+      if (attackedPlayer.isAllShipsKilled()) {
+        const winnerName = users.getUserById(currentPlayerId)?.name;
+        if (!winnerName) {
+          return;
+        }
+
+        if (winners.getWinnerByName(winnerName)) {
+          winners.addWin(winnerName);
+        } else {
+          winners.addNewWinner(winnerName);
+        }
+
+        games.finishGame(currentGame.gameId);
+
+        for (let player of currentGame.players) {
+          const wsClient = clients.get(player.index) as WebSocket;
+          wsClient.send(createFinishGameResponse(currentPlayerId));
+          wsClient.send(createUpdateWinnersResponse(winners.getWinners()));
+        }
+
+        rooms.deleteRoomByUsersIDs(currentPlayerId, attackedPlayer.index);
+      } else {
+        for (let player of currentGame.players) {
+          const wsClient = clients.get(player.index) as WebSocket;
+          wsClient.send(turnRes);
+        }
       }
 
       break;

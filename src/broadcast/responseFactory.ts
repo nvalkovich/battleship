@@ -79,7 +79,7 @@ export const createUpdateWinnersResponse = (winnersData: WinnersData): string =>
 export const createFinishGameResponse = (winPlayerID: string): string => {
   return JSON.stringify({
     type: wsGameCommands.Finish,
-    data: JSON.stringify(winPlayerID),
+    data: JSON.stringify({ winPlayer: winPlayerID }),
     id: 0,
   });
 };
