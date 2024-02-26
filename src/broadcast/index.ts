@@ -1,39 +1,41 @@
-import { ReqMessage } from './types/interfaces';
-import players from './storage/Players';
-import { wsRoomCommands, wsShipsCommands } from './types/enums';
+import { ReqMessage } from '../types/interfaces';
+import users from '../storage/UsersStorage';
+import { AttackResults, wsGameCommands, wsPlayerCommands, wsRoomCommands, wsShipsCommands } from '../types/enums';
 import { WebSocket } from 'ws';
-import rooms from './storage/Rooms';
-import { clients } from './app';
+import rooms from '../storage/RoomsStorage';
+import { clients } from '../app';
 import {
   createRegResponse,
   createUpdateRoomResponse,
   createNewGameResponse,
   createStartGameResponse,
-} from './responses';
-import games from './storage/Game';
+  createTurnResponse,
+  createUpdateWinnersResponse,
+  createAttackResponse,
+} from './responseFactory';
+import games from '../storage/GamesStorage';
+import winners from '../storage/WinnersStorage';
+import Player from '../models/Player';
 
 const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
   switch (req.type) {
-    case 'reg':
+    case wsPlayerCommands.Reg:
       const { name, password } = JSON.parse(req.data.toString());
-      const existingPlayer = players.isPlayerExist(name);
+      const existingPlayer = users.isUserExist(name);
 
       if (!existingPlayer) {
-        players.addPlayer({ name, password, id: clientID });
+        users.addUser({ name, password, id: clientID });
       }
 
       const error = existingPlayer && existingPlayer.password !== password ? 'Invlaid password' : '';
 
-      const regRes = createRegResponse(name, error);
-
-      const updateRes = createUpdateRoomResponse();
-
-      client?.send(regRes);
-      client.send(updateRes);
+      client?.send(createRegResponse(name, error));
+      client.send(createUpdateRoomResponse());
+      client.send(createUpdateWinnersResponse(winners.getWinners()));
 
       break;
     case wsRoomCommands.CreateRoom:
-      const clientName = players.getPlayerById(clientID)?.name;
+      const clientName = users.getUserById(clientID)?.name;
 
       if (clientName) {
         const roomUser = {
@@ -63,7 +65,7 @@ const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
         return;
       }
 
-      const clName = players.getPlayerById(clientID)?.name;
+      const clName = users.getUserById(clientID)?.name;
 
       if (clName) {
         rooms.addUserToRoom(indexRoom, { name: clName, index: clientID });
@@ -101,7 +103,7 @@ const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
     case wsShipsCommands.AddShips:
       const { gameId, ships, indexPlayer } = JSON.parse(req.data.toString());
 
-      const player = { index: indexPlayer, ships };
+      const player = new Player({ index: indexPlayer, ships });
 
       if (!games.getGameById(gameId)) {
         games.createNewGame({ gameId, turn: indexPlayer, players: [player] });
@@ -110,18 +112,65 @@ const broadcast = (client: WebSocket, req: ReqMessage, clientID: string) => {
       }
 
       const game = games.getGameById(gameId);
+
       if (game?.players?.length === 2) {
         const allPlayers = game.players.map((player) => player.index);
         const player = game.players.find((player) => player.index === game.turn);
+
         if (!player) {
           return;
         }
-        const res = createStartGameResponse(player?.ships, player?.index);
+
+        const startRes = createStartGameResponse(ships, player.index);
+        const turnRes = createTurnResponse(player.index);
+
         for (let player of allPlayers) {
           const wsClient = clients.get(player) as WebSocket;
-          wsClient.send(res);
+          wsClient.send(startRes);
+          wsClient.send(turnRes);
         }
       }
+      break;
+    case wsGameCommands.Attack:
+    case wsGameCommands.RandomAttack:
+      const { data } = JSON.parse(JSON.stringify(req));
+
+      const attackData = JSON.parse(data);
+      const currentGame = games.getGameById(attackData.gameId);
+
+      if (!currentGame || attackData.indexPlayer !== currentGame?.turn || !currentGame.players) {
+        return;
+      }
+
+      const attackedPlayer = currentGame.players.find((player) => player.index !== attackData.indexPlayer);
+
+      if (!attackedPlayer) {
+        return;
+      }
+
+      let attackPosition =
+        req.type === wsGameCommands.RandomAttack
+          ? attackedPlayer.generateRandomAttack()
+          : {
+              x: attackData.x,
+              y: attackData.y,
+            };
+
+      const attackResult = attackedPlayer.attack(attackPosition.x, attackPosition.y);
+
+      const attackResponse = createAttackResponse(attackPosition, attackData.indexPlayer, attackResult);
+      const nextPlayer = attackResult === AttackResults.Miss ? attackedPlayer.index : attackData.indexPlayer;
+
+      games.setTurn(currentGame.gameId, nextPlayer);
+      const turnRes = createTurnResponse(nextPlayer);
+
+      for (let player of currentGame.players) {
+        const wsClient = clients.get(player.index) as WebSocket;
+        wsClient.send(attackResponse);
+        wsClient.send(turnRes);
+      }
+
+      break;
   }
 };
 

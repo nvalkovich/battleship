@@ -1,5 +1,5 @@
-import { httpServer } from './http_server';
-import { wsServer } from './ws_server';
+import { httpServer } from './servers/http';
+import { wsServer } from './servers/ws';
 import broadcast from './broadcast';
 import { WebSocket } from 'ws';
 

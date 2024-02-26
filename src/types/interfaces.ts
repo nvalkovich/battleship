@@ -1,3 +1,5 @@
+import { AttackResults } from './enums';
+
 export interface ReqMessage {
   type: string;
   data: {
@@ -6,7 +8,7 @@ export interface ReqMessage {
   id: 0;
 }
 
-export interface Ship {
+export interface ShipData {
   position: {
     x: number;
     y: number;
@@ -14,4 +16,15 @@ export interface Ship {
   direction: boolean;
   length: number;
   type: 'small' | 'medium' | 'large' | 'huge';
+}
+
+export interface Cell {
+  x: number;
+  y: number;
+}
+
+export interface AttackInfo {
+  position: Cell;
+  currentPlayer: string;
+  status: AttackResults;
 }

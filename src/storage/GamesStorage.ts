@@ -1,9 +1,4 @@
-import { Ship } from 'src/types/interfaces';
-
-interface Player {
-  index: string;
-  ships: Ship[];
-}
+import Player from '../models/Player';
 
 interface GameData {
   gameId: string;
@@ -39,6 +34,16 @@ class GamesStorage {
 
   getGameById(id: string) {
     return this.games.find((gameData) => gameData.gameId === id);
+  }
+
+  setTurn(gameID: string, nextPlayerID: string) {
+    const game = this.getGameById(gameID);
+
+    if (!game) {
+      return;
+    }
+
+    game.turn = nextPlayerID;
   }
 }
 

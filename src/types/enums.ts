@@ -21,3 +21,9 @@ export enum wsGameCommands {
   Turn = 'turn',
   Finish = 'finish',
 }
+
+export enum AttackResults {
+  Miss = 'miss',
+  Killed = 'killed',
+  Shot = 'shot',
+}
