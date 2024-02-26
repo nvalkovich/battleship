@@ -46,6 +46,14 @@ class GamesStorage {
     game.turn = nextPlayerId;
   }
 
+  getGameByUserId(userID: string) {
+    return this.games.find(({ players }) => {
+      const playersIds = players?.map((player) => player.index);
+
+      return playersIds?.includes(userID);
+    });
+  }
+
   finishGame(finishGameId: string) {
     this.games = this.games.filter((game) => game.gameId !== finishGameId);
   }

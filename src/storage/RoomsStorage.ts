@@ -84,6 +84,14 @@ class RoomsStorage {
     return allUsersInRoom.includes(userID);
   }
 
+  getRoomByUserId(userID: string) {
+    return this.rooms.find(({ roomUsers }) => {
+      const userIds = roomUsers?.map((roomUser) => roomUser.index);
+
+      return userIds?.includes(userID);
+    });
+  }
+
   deleteRoomByUsersIDs(user1: string, user2: string) {
     this.rooms = this.rooms.filter(({ roomUsers }) => {
       const roomUserIds = roomUsers.map((u) => u.index).sort();
